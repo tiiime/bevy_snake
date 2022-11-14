@@ -44,9 +44,7 @@ fn setup_world(mut commands: Commands) {
             },
             ..default()
         })
-        .insert(Block {
-            position: Position { x: 0, y: 0 },
-        })
+        .insert(Position { x: 0, y: 0 })
         .insert(PrevBlock {
             prev_entity: Option::None,
         })
@@ -56,27 +54,27 @@ fn setup_world(mut commands: Commands) {
         .insert(Tail);
 }
 
-fn system_map_block_to_board(mut query: Query<(&Block, &mut Transform)>, res: Res<BoardConfig>) {
+fn system_map_block_to_board(mut query: Query<(&Position, &mut Transform)>, res: Res<BoardConfig>) {
     let board = res.as_ref();
 
-    query.for_each_mut(|(block, mut transform)| {
+    query.for_each_mut(|(position, mut transform)| {
         transform.scale = Vec3::new(board.block_width(), board.block_height(), 0.);
         transform.translation.x = (board.block_width() - board.window_width) / 2.
-            + block.position.x as f32 * board.block_width();
+            + position.x as f32 * board.block_width();
         transform.translation.y = (board.block_height() - board.window_height) / 2.
-            + block.position.y as f32 * board.block_height();
+            + position.y as f32 * board.block_height();
     });
 }
 
 fn system_snake_step(
     mut commands: Commands,
-    mut query_head: Query<(Entity, &Head, &Block, &mut PrevBlock)>,
+    mut query_head: Query<(Entity, &Head, &Position, &mut PrevBlock)>,
     board: Res<BoardConfig>,
 ) {
     let board = board.as_ref();
-    if let Some((entity, head, block, mut prev_block)) = query_head.iter_mut().next() {
-        let next = block.next_block(head.direction);
-        if board.validate(next.position) {
+    if let Some((entity, head, position, mut prev_block)) = query_head.iter_mut().next() {
+        let next = position.calc_next(head.direction);
+        if board.validate(next) {
             let prev = commands
                 .spawn_bundle(SpriteBundle {
                     sprite: Sprite {
@@ -139,41 +137,34 @@ impl BoardConfig {
         position.x >= 0 && position.x < self.x && position.y >= 0 && position.y < self.y
     }
 }
+
 /// 棋盘格子坐标
-#[derive(Clone, Copy)]
+#[derive(Component, Clone, Copy)]
 struct Position {
     x: i32,
     y: i32,
 }
 
-/// 需要绘制的 block
-#[derive(Component)]
-struct Block {
-    position: Position,
-}
-
-impl Block {
-    fn next_block(&self, direction: Direction) -> Block {
-        let position = match direction {
+impl Position {
+    fn calc_next(&self, direction: Direction) -> Position {
+        match direction {
             Direction::Up => Position {
-                y: self.position.y + 1,
-                ..self.position
+                y: self.y + 1,
+                ..*self
             },
             Direction::Down => Position {
-                y: self.position.y - 1,
-                ..self.position
+                y: self.y - 1,
+                ..*self
             },
             Direction::Left => Position {
-                x: self.position.x - 1,
-                ..self.position
+                x: self.x - 1,
+                ..*self
             },
             Direction::Right => Position {
-                x: self.position.x + 1,
-                ..self.position
+                x: self.x + 1,
+                ..*self
             },
-        };
-
-        Block { position: position }
+        }
     }
 }
 
