@@ -25,10 +25,16 @@ fn main() {
         .add_plugins(DefaultPlugins)
         .add_plugin(WorldInspectorPlugin::new())
         .add_startup_system(setup_world)
+        .add_startup_system(system_create_food)
         .add_system(system_map_block_to_board)
         .add_fixed_timestep(Duration::from_millis(300), "step")
         .add_fixed_timestep_system("step", 0, system_snake_step.label("move_forward"))
-        .add_fixed_timestep_system("step", 0, system_snake_drop_tail.after("move_forward"))
+        .add_fixed_timestep_system(
+            "step",
+            0,
+            system_check_eat.label("check_eat").after("move_forward"),
+        )
+        .add_fixed_timestep_system("step", 0, system_snake_drop_tail.after("check_eat"))
         .add_system(system_keyevent)
         .run()
 }
@@ -52,6 +58,19 @@ fn setup_world(mut commands: Commands) {
             direction: Direction::Up,
         })
         .insert(Tail);
+}
+
+fn system_create_food(mut commands: Commands) {
+    commands
+        .spawn_bundle(SpriteBundle {
+            sprite: Sprite {
+                color: Color::rgb(0., 1., 0.),
+                ..default()
+            },
+            ..default()
+        })
+        .insert(Food)
+        .insert(Position { x: 2, y: 2 });
 }
 
 fn system_map_block_to_board(mut query: Query<(&Position, &mut Transform)>, res: Res<BoardConfig>) {
@@ -95,11 +114,37 @@ fn system_snake_step(
     }
 }
 
+fn system_check_eat(
+    mut commands: Commands,
+    food: Query<(Entity, &Position), With<Food>>,
+    head: Query<&Position, With<Head>>,
+    tail: Query<Entity, With<Tail>>,
+) {
+    if let Some((entity, food)) = food.iter().next() {
+        if let Some(head) = head.iter().next() {
+            if let Some(tail) = tail.iter().next() {
+                if food.x == head.x && food.y == head.y {
+                    commands.entity(tail).insert(AppendTail);
+                    info!("append#{:?}", tail);
+                    commands.entity(entity).despawn();
+                }
+            }
+        }
+    }
+}
+
 fn system_snake_drop_tail(
     mut commands: Commands,
-    query_tail: Query<(Entity, &PrevBlock), With<Tail>>,
+    query_tail: Query<(Entity, &PrevBlock, Option<&AppendTail>), With<Tail>>,
 ) {
-    if let Some((entity, prev)) = query_tail.into_iter().next() {
+    if let Some((entity, prev, option_append)) = query_tail.into_iter().next() {
+        info!("drop tail#{:?}", entity);
+        if let Some(_append) = option_append {
+            info!("skip drop");
+            commands.entity(entity).remove::<AppendTail>();
+            return;
+        }
+        info!("drop");
         if let Some(p) = prev.prev_entity {
             commands.entity(p).insert(Tail);
         }
@@ -139,7 +184,7 @@ impl BoardConfig {
 }
 
 /// 棋盘格子坐标
-#[derive(Component, Clone, Copy)]
+#[derive(Component, Clone, Copy, PartialEq, Debug)]
 struct Position {
     x: i32,
     y: i32,
@@ -199,3 +244,9 @@ struct PrevBlock {
 
 #[derive(Component)]
 struct Tail;
+
+#[derive(Component)]
+struct Food;
+
+#[derive(Component, Debug)]
+struct AppendTail;
