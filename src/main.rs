@@ -4,7 +4,7 @@ use bevy::{
     input::{keyboard::KeyboardInput, ButtonState},
     prelude::*,
 };
-use bevy_inspector_egui::{egui::Key, WorldInspectorPlugin};
+use bevy_inspector_egui::*;
 use iyes_loopless::prelude::*;
 
 fn main() {
@@ -70,11 +70,11 @@ fn system_map_block_to_board(mut query: Query<(&Block, &mut Transform)>, res: Re
 
 fn system_snake_step(
     mut commands: Commands,
-    mut queryHead: Query<(Entity, &Head, &Block, &mut PrevBlock)>,
+    mut query_head: Query<(Entity, &Head, &Block, &mut PrevBlock)>,
     board: Res<BoardConfig>,
 ) {
     let board = board.as_ref();
-    if let Some((entity, head, block, mut prevBlock)) = queryHead.iter_mut().next() {
+    if let Some((entity, head, block, mut prev_block)) = query_head.iter_mut().next() {
         let next = block.next_block(head.direction);
         if board.validate(next.position) {
             let prev = commands
@@ -91,7 +91,7 @@ fn system_snake_step(
                     prev_entity: Option::None,
                 })
                 .id();
-            prevBlock.prev_entity = Some(prev);
+            prev_block.prev_entity = Some(prev);
             commands.entity(entity).remove::<Head>();
         }
     }
@@ -99,9 +99,9 @@ fn system_snake_step(
 
 fn system_snake_drop_tail(
     mut commands: Commands,
-    mut queryTail: Query<(Entity, &PrevBlock), With<Tail>>,
+    query_tail: Query<(Entity, &PrevBlock), With<Tail>>,
 ) {
-    if let Some((entity, prev)) = queryTail.into_iter().next() {
+    if let Some((entity, prev)) = query_tail.into_iter().next() {
         if let Some(p) = prev.prev_entity {
             commands.entity(p).insert(Tail);
         }
