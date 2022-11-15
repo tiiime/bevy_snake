@@ -28,14 +28,16 @@ fn main() {
         .add_startup_system(system_create_food)
         .add_system(system_map_block_to_board)
         .add_fixed_timestep(Duration::from_millis(300), "step")
+        .add_fixed_timestep_child_stage("step")
         .add_fixed_timestep_system("step", 0, system_snake_step.label("move_forward"))
         .add_fixed_timestep_system(
             "step",
             0,
             system_check_eat.label("check_eat").after("move_forward"),
         )
-        .add_fixed_timestep_system("step", 0, system_snake_drop_tail.after("check_eat"))
+        .add_fixed_timestep_system("step", 1, system_snake_drop_tail.after("check_eat"))
         .add_system(system_keyevent)
+        .add_system(system_log_option)
         .run()
 }
 
@@ -94,7 +96,7 @@ fn system_snake_step(
     if let Some((entity, head, position, mut prev_block)) = query_head.iter_mut().next() {
         let next = position.calc_next(head.direction);
         if board.validate(next) {
-            let prev = commands
+            let new_head = commands
                 .spawn_bundle(SpriteBundle {
                     sprite: Sprite {
                         color: Color::rgb(1., 0., 0.),
@@ -108,7 +110,7 @@ fn system_snake_step(
                     prev_entity: Option::None,
                 })
                 .id();
-            prev_block.prev_entity = Some(prev);
+            prev_block.prev_entity = Some(new_head);
             commands.entity(entity).remove::<Head>();
         }
     }
@@ -120,16 +122,22 @@ fn system_check_eat(
     head: Query<&Position, With<Head>>,
     tail: Query<Entity, With<Tail>>,
 ) {
-    if let Some((entity, food)) = food.iter().next() {
+    if let Some((food_entity, food_position)) = food.iter().next() {
         if let Some(head) = head.iter().next() {
             if let Some(tail) = tail.iter().next() {
-                if food.x == head.x && food.y == head.y {
+                if food_position.x == head.x && food_position.y == head.y {
                     commands.entity(tail).insert(AppendTail);
                     info!("append#{:?}", tail);
-                    commands.entity(entity).despawn();
+                    commands.entity(food_entity).despawn();
                 }
             }
         }
+    }
+}
+
+fn system_log_option(query_tail: Query<(Entity,&AppendTail)>){
+    if let Some((entity,append)) = query_tail.iter().next() {
+        info!("system_log_option#{:?}", entity);
     }
 }
 
