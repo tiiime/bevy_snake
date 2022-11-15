@@ -6,6 +6,7 @@ use bevy::{
 };
 use bevy_inspector_egui::*;
 use iyes_loopless::prelude::*;
+use rand::prelude::random;
 
 fn main() {
     let board = BoardConfig {
@@ -37,7 +38,6 @@ fn main() {
         )
         .add_fixed_timestep_system("step", 1, system_snake_drop_tail.after("check_eat"))
         .add_system(system_keyevent)
-        .add_system(system_log_option)
         .run()
 }
 
@@ -62,7 +62,9 @@ fn setup_world(mut commands: Commands) {
         .insert(Tail);
 }
 
-fn system_create_food(mut commands: Commands) {
+fn system_create_food(mut commands: Commands, board: Res<BoardConfig>) {
+    let board = board.as_ref();
+
     commands
         .spawn_bundle(SpriteBundle {
             sprite: Sprite {
@@ -72,7 +74,10 @@ fn system_create_food(mut commands: Commands) {
             ..default()
         })
         .insert(Food)
-        .insert(Position { x: 2, y: 2 });
+        .insert(Position {
+            x: (random::<f32>() * board.x as f32) as i32,
+            y: (random::<f32>() * board.x as f32) as i32,
+        });
 }
 
 fn system_map_block_to_board(mut query: Query<(&Position, &mut Transform)>, res: Res<BoardConfig>) {
@@ -121,6 +126,7 @@ fn system_check_eat(
     food: Query<(Entity, &Position), With<Food>>,
     head: Query<&Position, With<Head>>,
     tail: Query<Entity, With<Tail>>,
+    board: Res<BoardConfig>,
 ) {
     if let Some((food_entity, food_position)) = food.iter().next() {
         if let Some(head) = head.iter().next() {
@@ -129,15 +135,11 @@ fn system_check_eat(
                     commands.entity(tail).insert(AppendTail);
                     info!("append#{:?}", tail);
                     commands.entity(food_entity).despawn();
+
+                    system_create_food(commands, board)
                 }
             }
         }
-    }
-}
-
-fn system_log_option(query_tail: Query<(Entity,&AppendTail)>){
-    if let Some((entity,append)) = query_tail.iter().next() {
-        info!("system_log_option#{:?}", entity);
     }
 }
 
@@ -147,7 +149,7 @@ fn system_snake_drop_tail(
 ) {
     if let Some((entity, prev, option_append)) = query_tail.into_iter().next() {
         info!("drop tail#{:?}", entity);
-        if let Some(_append) = option_append {
+        if let Some(_) = option_append {
             info!("skip drop");
             commands.entity(entity).remove::<AppendTail>();
             return;
