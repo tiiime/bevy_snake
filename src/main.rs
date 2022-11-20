@@ -17,13 +17,15 @@ fn main() {
     };
 
     App::new()
-        .insert_resource(WindowDescriptor {
-            width: board.window_width,
-            height: board.window_height,
+        .add_plugins(DefaultPlugins.set(WindowPlugin {
+            window: WindowDescriptor {
+                width: board.window_width,
+                height: board.window_height,
+                ..default()
+            },
             ..default()
-        })
+        }))
         .insert_resource(board)
-        .add_plugins(DefaultPlugins)
         .add_plugin(WorldInspectorPlugin::new())
         .add_startup_system(setup_world)
         .add_startup_system(system_create_food)
@@ -36,16 +38,16 @@ fn main() {
             0,
             system_check_eat.label("check_eat").after("move_forward"),
         )
-        .add_fixed_timestep_system("step", 1, system_snake_drop_tail.after("check_eat"))
+        .add_fixed_timestep_system("step", 1, system_snake_drop_tail)
         .add_system(system_keyevent)
         .run()
 }
 
 /// 初始化棋盘资源
 fn setup_world(mut commands: Commands) {
-    commands.spawn_bundle(Camera2dBundle::default());
+    commands.spawn(Camera2dBundle::default());
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 color: Color::rgb(1., 0., 0.),
                 ..default()
@@ -66,7 +68,7 @@ fn system_create_food(mut commands: Commands, board: Res<BoardConfig>) {
     let board = board.as_ref();
 
     commands
-        .spawn_bundle(SpriteBundle {
+        .spawn(SpriteBundle {
             sprite: Sprite {
                 color: Color::rgb(0., 1., 0.),
                 ..default()
@@ -102,7 +104,7 @@ fn system_snake_step(
         let next = position.calc_next(head.direction);
         if board.validate(next) {
             let new_head = commands
-                .spawn_bundle(SpriteBundle {
+                .spawn(SpriteBundle {
                     sprite: Sprite {
                         color: Color::rgb(1., 0., 0.),
                         ..default()
@@ -173,6 +175,7 @@ fn system_keyevent(mut input: EventReader<KeyboardInput>, mut query: Query<&mut 
 }
 
 /// 棋盘格子数量
+#[derive(Resource)]
 struct BoardConfig {
     x: i32,
     y: i32,
