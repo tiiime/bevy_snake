@@ -10,10 +10,10 @@ use rand::prelude::random;
 
 fn main() {
     let board = BoardConfig {
-        x: 9,
+        x: 18,
         y: 9,
         window_width: 720.,
-        window_height: 720.,
+        window_height: 360.,
     };
 
     App::new()
@@ -49,7 +49,7 @@ fn setup_world(mut commands: Commands) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
-                color: Color::rgb(1., 0., 0.),
+                color: Color::rgb_u8(237, 114, 132),
                 ..default()
             },
             ..default()
@@ -70,7 +70,7 @@ fn system_create_food(mut commands: Commands, board: Res<BoardConfig>) {
     commands
         .spawn(SpriteBundle {
             sprite: Sprite {
-                color: Color::rgb(0., 1., 0.),
+                color: Color::rgb_u8(214, 92, 171),
                 ..default()
             },
             ..default()
@@ -78,7 +78,7 @@ fn system_create_food(mut commands: Commands, board: Res<BoardConfig>) {
         .insert(Food)
         .insert(Position {
             x: (random::<f32>() * board.x as f32) as i32,
-            y: (random::<f32>() * board.x as f32) as i32,
+            y: (random::<f32>() * board.y as f32) as i32,
         });
 }
 
@@ -106,7 +106,7 @@ fn system_snake_step(
             let new_head = commands
                 .spawn(SpriteBundle {
                     sprite: Sprite {
-                        color: Color::rgb(1., 0., 0.),
+                        color: Color::rgb_u8(237, 114, 132),
                         ..default()
                     },
                     ..default()
